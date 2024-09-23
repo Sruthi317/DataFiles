@@ -1,0 +1,195 @@
+1. Introduction to Databricks
+Task: Creating a Databricks Notebook.
+
+import pandas as pd
+
+# Create a sample DataFrame
+data = {
+    'Name': ['Alice', 'Bob', 'Charlie'],
+    'Age': [25, 30, 35],
+    'Salary': [50000, 60000, 70000]
+}
+df = pd.DataFrame(data)
+
+# Display the DataFrame
+display(df)
+
+# Perform basic operations
+average_salary = df['Salary'].mean()
+print(f"Average Salary: {average_salary}")
+
+# Adding a new column
+df['AgeInMonths'] = df['Age'] * 12
+display(df)
+
+=====================================================================================
+
+2. Setting Up Azure Databricks Workspace and Configuring Clusters
+Task: Configuring Clusters
+
+# Sample code to test cluster setup
+print("Cluster setup is verified. You can now run further analysis.")
+
+=====================================================================================
+
+3. Real-Time Data Processing with Databricks
+Use a dataset with 1 million records, including fields such as event_time ,
+event_type , user_id , and amount , to simulate a streaming data scenario.
+Perform real-time data aggregation (e.g., summing up the amount per minute or
+event type).
+
+dbutils.fs.cp("file:/Workspace/streaming_data.csv", "dbfs:/FileStore/streaming_data.csv")
+schema="event_time TIMESTAMP, event_type STRING, user_id STRING, amount DOUBLE"
+df_stream = spark.readStream.format("csv").schema(schema).load("dbfs:/FileStore/streaming_data.csv")
+
+# Perform real-time aggregation (sum of amount per event_type)
+aggregated_df = df_stream.groupBy("event_type").sum("amount")
+
+query = aggregated_df.writeStream.outputMode("complete").format("console").start()
+query.awaitTermination()
+
+======================================================================================
+
+4. Data Exploration and Visualization in Databricks
+Task: Visualizing Data in Databricks
+
+Create multiple visualizations, including bar charts and scatter plots, to
+explore relationships between variables.
+
+import pyspark.sql.functions as F
+dbutils.fs.cp("file:/Workspace/sales_data.csv", "dbfs:/FileStore/sales_data.csv")
+sales_df = spark.read.format("csv").option("header", "true").option("inferSchema", "true").load("dbfs:/FileStore/sales_data.csv")
+sales_df = sales_df.withColumn("TotalSales", sales_df["Quantity"] * sales_df["Price"])
+product_sales = sales_df.groupBy("Product").agg(F.sum("TotalSales").alias("TotalSales"))
+
+import matplotlib.pyplot as plt
+
+# Bar Chart - Total Sales by Product
+product_sales_df = product_sales.toPandas()
+product_sales_df.plot(kind='bar', x='Product', y='TotalSales', legend=False)
+plt.title("Total Sales by Product")
+plt.xlabel("Product")
+plt.ylabel("Total Sales")
+plt.xticks(rotation=45, ha='right')
+plt.show()
+
+# Scatter Plot - Quantity vs. Price
+sales_pandas_df = sales_df.toPandas()
+plt.scatter(sales_pandas_df['Quantity'], sales_pandas_df['Price'])
+plt.title('Quantity vs. Price')
+plt.xlabel('Quantity')
+plt.ylabel('Price')
+plt.show()
+
+# Histogram: Distribution of Total Sales
+sales_pandas_df['TotalSales'].plot(kind='hist', bins=20)
+plt.title('Distribution of Total Sales')
+plt.xlabel('Total Sales')
+plt.show()
+
+======================================================================================
+6. Reading and Writing Data in Databricks
+
+Read data from different formats: CSV, JSON, Parquet, and Delta.
+Write the data to Delta format and other formats like Parquet and JSON.
+
+dbutils.fs.cp("file:/Workspace/large_dataset.csv", "dbfs:/FileStore/large_dataset.csv")
+csv_df = spark.read.format("csv").option("header", "true").option("inferSchema", "true").load("dbfs:/FileStore/large_dataset.csv")
+csv_df.show(5)
+
+# Read data from a JSON file
+json_df = spark.read.format("json").option("multiline", "true").load("dbfs:/FileStore/large_dataset.json")
+json_df.show(5)
+
+# Read data from a Parquet file
+parquet_df = spark.read.format("parquet").load("dbfs:/FileStore/large_dataset.parquet")
+parquet_df.show(5)
+
+# Read data from a Delta Table
+delta_df = spark.read.format("delta").load("dbfs:/FileStore/delta_table")
+delta_df.show(5)
+
+# Write to multiple formats (Delta, Parquet, JSON)
+csv_df.write.format("delta").mode("overwrite").save("dbfs:/FileStore/delta_output")
+csv_df.write.format("parquet").mode("overwrite").save("dbfs:/path/to/parquet_output")
+csv_df.write.format("json").mode("overwrite").save("dbfs:/path/to/json_output")
+
+=====================================================================================
+
+7. Analyzing and Visualizing Streaming Data with Databricks
+
+# Load and Analyze a Large Streaming Dataset
+streaming_df = spark.readStream.format("csv").option("header", "true").load("dbfs:/FileStore/large_streaming_data.csv")
+
+# Perform Analysis
+result_df = streaming_df.groupBy(window(col("timestamp"), "1 hour")).agg({"value": "sum"})
+
+# Visualize real-time changes
+query = result_df.writeStream.outputMode("complete").format("console").start()
+query.awaitTermination()
+
+=====================================================================================
+
+8. Introduction to Databricks Delta Lake
+Update the table over time and demonstrate the ability to time travel between
+versions of the table.
+Optimize the Delta table and perform operations like compaction and vacuuming.
+
+df.write.format("delta").mode("overwrite").save("/delta/large_delta_table")
+
+# Updating the delta table
+spark.sql("UPDATE delta.`/delta/large_delta_table` SET quantity = 50 WHERE product = 'Widget A'")
+
+#  Time Travel (Querying Previous Versions)
+df_version_1 = spark.read.format("delta").option("versionAsOf", 1).load("/delta/large_delta_table")
+
+# Optimize the Delta table
+spark.sql("OPTIMIZE delta.`/delta/large_delta_table` ZORDER BY (product)")
+
+# Vacuum to remove old data files
+spark.sql("VACUUM delta.`/delta/large_delta_table` RETAIN 168 HOURS")
+
+=====================================================================================
+
+9. Managed and Unmanaged Tables
+
+# Managed Table
+# Load data into a DataFrame
+df = spark.read.format("csv").option("header", "true").load("dbfs:/FileStore/sales_data.csv")
+
+# Create a managed table
+df.write.format("delta").mode("overwrite").saveAsTable("managed_sales_table")
+
+# Select records from managed table
+spark.sql("SELECT * FROM managed_sales_table").show()
+
+# Unmanaged Table
+# Load data into a DataFrame
+df_unmanaged = spark.read.format("csv").option("header", "true").load("dbfs:/FileStore/sales_data.csv")
+
+# Save the DataFrame to an external location
+external_path = "dbfs:/FileStore/external_sales_data/"
+df_unmanaged.write.format("delta").mode("overwrite").save(external_path)
+
+# Create an unmanaged table with the external data location
+spark.sql(f"""CREATE TABLE unmanaged_sales_table USING DELTA LOCATION '{external_path}'""")
+
+# Select records from unmanaged table
+spark.sql("SELECT * FROM unmanaged_sales_table").show()
+
+======================================================================================
+
+10. Views and Temporary Views
+
+# Create a view
+sales_df.createOrReplaceTempView("temp_sales_view")
+
+# Create a global temporary view
+spark.sql("CREATE OR REPLACE GLOBAL TEMP VIEW global_sales_view AS SELECT * FROM temp_sales_view")
+
+# Query the views
+temp_view_df = spark.sql("SELECT * FROM temp_sales_view")
+global_view_df = spark.sql("SELECT * FROM global_temp.global_sales_view")
+display(temp_view_df)
+display(global_view_df)
+=====================================================================================

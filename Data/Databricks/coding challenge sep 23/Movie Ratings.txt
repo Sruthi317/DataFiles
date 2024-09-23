@@ -1,0 +1,115 @@
+1. Movie Ratings Data Ingestion:
+
+from pyspark.sql import SparkSession
+from pyspark.sql.utils import AnalysisException
+import logging
+
+# Initialize Spark session
+spark = SparkSession.builder \
+    .appName("Movie Ratings Data Ingestion") \
+    .getOrCreate()
+
+# Configure logging
+logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Path to the CSV file
+csv_file_path = "/conent/sample_data/movie_ratings.csv"
+delta_table_path = "/content/sample_data/delta/movie_ratings"
+
+# Function to read CSV and handle errors
+def read_csv_with_error_handling(file_path):
+    try:
+        df = spark.read.csv(file_path, header=True, inferSchema=True)
+        return df
+    except AnalysisException as e:
+        logging.error(f"Error reading CSV file: {e}")
+        return None
+
+# Ingest data
+df = read_csv_with_error_handling(csv_file_path)
+
+if df is not None:
+    # Check for null values
+    if df.filter(df['UserID'].isNull() | df['MovieID'].isNull() | df['Rating'].isNull()).count() > 0:
+        logging.error("Data contains null values in critical fields.")
+    else:
+        try:
+            df.write.format("delta").mode("overwrite").save(delta_table_path)
+            print("Data ingested successfully into Delta table.")
+        except Exception as e:
+            logging.error(f"Error writing to Delta table: {e}")
+else:
+    print("Failed to read the CSV file. Please check the logs for details.")
+=====================================================================================
+2. Data Cleaning
+
+# Load the Delta table
+cleaned_table_path = "/delta/cleaned_movie_ratings"
+df = spark.read.format("delta").load(delta_table_path)
+
+# Data cleaning
+df_cleaned = df.filter((df.Rating >= 1) & (df.Rating <= 5)) \
+                .dropDuplicates(['UserID', 'MovieID'])
+
+# Save the cleaned data to a new Delta table
+try:
+    df_cleaned.write.format("delta").mode("overwrite").save(cleaned_table_path)
+    print("Cleaned data saved successfully to new Delta table.")
+except Exception as e:
+    logging.error(f"Error saving cleaned data to Delta table: {e}")
+
+======================================================================================
+3. Movie Rating Analysis
+
+# Load the cleaned Delta table
+df_cleaned = spark.read.format("delta").load(cleaned_table_path)
+
+# Average rating for each movie
+average_ratings = df_cleaned.groupBy("MovieID") \
+                             .agg({"Rating": "avg"}) \
+                             .withColumnRenamed("avg(Rating)", "AverageRating")
+
+# Identify movies with highest and lowest average ratings
+highest_rating = average_ratings.orderBy("AverageRating", ascending=False).limit(1)
+lowest_rating = average_ratings.orderBy("AverageRating").limit(1)
+
+# Save the analysis results to Delta tables
+average_ratings_path = "/delta/average_movie_ratings"
+highest_rating_path = "/delta/highest_movie_rating"
+lowest_rating_path = "/delta/lowest_movie_rating"
+
+try:
+    average_ratings.write.format("delta").mode("overwrite").save(average_ratings_path)
+    highest_rating.write.format("delta").mode("overwrite").save(highest_rating_path)
+    lowest_rating.write.format("delta").mode("overwrite").save(lowest_rating_path)
+    print("Analysis results saved successfully to Delta tables.")
+except Exception as e:
+    logging.error(f"Error saving analysis results to Delta tables: {e}")
+
+====================================================================================
+4. Time Travel and Delta Lake History
+
+# Perform an update to the movie ratings data
+df_updated = df_cleaned.withColumn("Rating", df_cleaned.Rating + 1)  # Example update
+df_updated.write.format("delta").mode("overwrite").save(cleaned_table_path)
+
+# Roll back to a previous version
+# Assuming you want to roll back to version 0
+spark.sql(f"CREATE OR REPLACE TABLE movie_ratings_versioned AS SELECT * FROM delta.`{cleaned_table_path}` VERSION AS OF 0")
+
+# Describe history
+delta_table = DeltaTable.forPath(spark, cleaned_table_path)
+history = delta_table.history()
+history.show(truncate=False)
+
+======================================================================================
+5. Optimize Delta Table
+
+# Optimize the Delta table
+spark.sql(f"OPTIMIZE delta.`{cleaned_table_path}` ZORDER BY MovieID")
+
+# Vacuum to clean up older versions
+spark.sql(f"VACUUM delta.`{cleaned_table_path}` RETAIN 0 HOURS")  # Adjust retention period as needed
+
+=====================================================================================
+

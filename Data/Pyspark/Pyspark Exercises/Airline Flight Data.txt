@@ -1,0 +1,102 @@
+Dataset: Airline Flight Data
+
+Sample Data:
+flight_id,airline,flight_number,origin,destination,departure_time,arrival_time,delay_min
+1,Delta,DL123,JFK,LAX,08:00,11:00,30,3970,2023-07-01
+2,United,UA456,SFO,ORD,09:30,15:00,45,2960,2023-07-01
+3,Southwest,SW789,DAL,ATL,06:00,08:30,0,1150,2023-07-01
+4,Delta,DL124,LAX,JFK,12:00,20:00,20,3970,2023-07-02
+5,American,AA101,MIA,DEN,07:00,10:00,15,2770,2023-07-02
+6,United,UA457,ORD,SFO,11:00,14:30,0,2960,2023-07-02
+7,JetBlue,JB302,BOS,LAX,06:30,09:45,10,4180,2023-07-03
+
+! pip install pyspark
+
+ from pyspark.sql import SparkSession
+ from pyspark.sql.functions import avg,sum,max
+
+ spark=SparkSession.builder.appName('airline_flight_data').getOrCreate()
+
+ airline_df=spark.read.csv("/content/airline_flight_data.csv", header=True, inferSchema=True)
+
+
+Exercises:
+1. Find the Total Distance Traveled by Each Airline
+Group the data by airline and calculate the total distance traveled for
+each airline.
+
+ total_distance_travelled = airline_df.groupBy("airline").agg(sum("distance").alias("total_distance"))
+ print("Total Distance Traveled by Each Airline: ")
+ total_distance_travelled.show()
+
+2. Filter Flights with Delays Greater than 30 Minutes
+Filter the dataset to show only flights where the delay was greater than
+30 minutes.
+
+ delayed_flights = airline_df.filter(airline_df["delay_min"] > 30)
+ print("Flights with Delays Greater than 30 Minutes: ")
+ delayed_flights.show()
+
+
+3. Find the Flight with the Longest Distance
+Identify the flight that covered the longest distance.
+
+longest_flight = airline_df.orderBy(airline_df["distance"].desc()).limit(1)
+ print("Flight with the Longest Distance: ")
+ longest_flight.show()
+
+4. Calculate the Average Delay Time for Each Airline
+Group the data by airline and calculate the average delay time in
+minutes for each airline.
+
+average_delay = airline_df.groupBy("airline").agg(avg("delay_min").alias("average_delay"))
+ print("Average Delay Time for Each Airline: ")
+ average_delay.show()
+
+5. Identify Flights That Were Not Delayed
+Filter the dataset to show only flights with delay_minutes = 0 .
+
+not_delayed_flights = airline_df.filter(airline_df["delay_min"] == 0)
+ print("Flights That Were Not Delayed: ")
+ not_delayed_flights.show()
+
+6. Find the Top 3 Most Frequent Routes
+Group the data by origin and destination to find the top 3 most
+frequent flight routes.
+
+ top_3_routes = airline_df.groupBy("origin", "destination").count().orderBy("count", ascending=False).limit(3)
+ print("Top 3 Most Frequent Routes: ")
+ top_3_routes.show()
+
+7. Calculate the Total Number of Flights per Day
+Group the data by date and calculate the total number of flights on
+each day.
+
+ flights_per_day = airline_df.groupBy("start_date ").count()
+ print("Total Number of Flights per Day: ")
+ flights_per_day.show()
+
+8. Find the Airline with the Most Flights
+Identify the airline that operated the most flights.
+
+ most_flights_airline = airline_df.groupBy("airline").count().orderBy("count", ascending=False).limit(1)
+ print("Airline with the Most Flights: ")
+ most_flights_airline.show()
+
+9. Calculate the Average Flight Distance per Day
+Group the data by date and calculate the average flight distance for
+each day.
+
+average_distance_per_day = airline_df.groupBy("start_date ").agg(avg("distance").alias("average_distance"))
+ print("Average Flight Distance per Day: ")
+ average_distance_per_day.show()
+
+
+10. Create a New Column for On-Time Status
+Add a new column called on_time that indicates whether a flight was on
+time ( True if delay_minutes = 0 , otherwise False ).
+
+from pyspark.sql.functions import when
+ data_with_on_time = airline_df.withColumn("on_time", when(airline_df["delay_min"] == 0, True).otherwise(False))
+ print(" added colum on-time status: ")
+ data_with_on_time.show()

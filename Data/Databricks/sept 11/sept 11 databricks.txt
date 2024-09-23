@@ -1,0 +1,78 @@
+FL_DATE,CARRIER,ORIGIN,DEST,DEP_DELAY,ARR_DELAY
+2023-09-01,AA,ATL,DFW,5,10
+2023-09-01,UA,LAX,JFK,-3,0
+2023-09-01,DL,SFO,ORD,7,15
+2023-09-02,AA,DFW,LAX,0,-5
+2023-09-02,UA,JFK,ATL,-2,0
+2023-09-02,DL,ORD,LAX,20,30
+2023-09-03,AA,LAX,SFO,10,12
+2023-09-03,UA,ATL,ORD,0,-10
+2023-09-03,DL,SFO,JFK,5,25
+2023-09-04,AA,JFK,LAX,0,0
+2023-09-04,UA,ORD,ATL,15,20
+2023-09-04,DL,LAX,SFO,-5,-10
+2023-09-05,AA,LAX,JFK,20,25
+2023-09-05,UA,DFW,ATL,0,0
+2023-09-05,DL,JFK,LAX,10,15
+
+1.)Load the dataset.
+load a csv file into a spark dataframe in databricks. 
+display it and inspect the schema.
+
+# Load CSV into DataFrame
+df = spark.read.csv("file:/Workspace/Shared/exam.csv", header=True, inferSchema=True)
+
+# Display the DataFrame
+df.show(10)
+
+# Inspect the schema
+df.printSchema()
+
+2.)Data Cleaning
+Drop any rows containing null values.
+Filter out rows where a specific column (e.g ARR_DELAY) is less than or equal to zero.
+
+# Drop rows with any null values
+df_cleaned = df.dropna()
+
+# Filter rows where ARR_DELAY is greater than zero
+df_filtered = df_cleaned.filter(df_cleaned["ARR_DELAY"] > 0)
+
+# Display the resulting DataFrame
+df_filtered.show()
+
+3.)Aggregation and summary statistics.
+Group the data by a categorical column (e.g., CARRIER) and calculate the average value of a numerical column (e.g, ARR_DELAY)
+
+# Group by the categorical column 'CARRIER' and calculate the average of 'ARR_DELAY'
+df_grouped = df_filtered.groupBy("CARRIER").avg("ARR_DELAY")
+
+# Show the result
+df_grouped.show()
+
+Find the minimum, maximum and mean values for a numerical column (e.g., ARR_DELAY).
+----------------------------------------------------------------------------------
+
+from pyspark.sql.functions import min, max, mean
+
+# Calculate minimum, maximum, and mean values for 'ARR_DELAY'
+df_summary = df_filtered.select(
+    min("ARR_DELAY").alias("min_arr_delay"),
+    max("ARR_DELAY").alias("max_arr_delay"),
+    mean("ARR_DELAY").alias("mean_arr_delay")
+)
+
+# Show the summary
+df_summary.show()
+
+
+4.) Data visualization
+Use Databricks built-in visualizations to create a bar chart showing the total count of entries for each category. (e,g, total number of flights per CARRIER).
+
+# Group by 'CARRIER' and count the number of entries
+df_count = df.groupBy("CARRIER").count()
+
+# Show the result to prepare for visualization
+df_count.show()
+
+Create a histogram that shows the distribution of a numerical column(e.g., distribution of ARR_DELAY)

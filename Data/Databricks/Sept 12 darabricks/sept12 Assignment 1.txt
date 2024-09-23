@@ -1,0 +1,56 @@
+Assignment 1: Working with CSV Data (employee_data.csv)
+Tasks:
+1. Load the CSV data:
+Load the employee_data.csv file into a DataFrame.
+Display the first 10 rows and inspect the schema.
+
+from pyspark.sql import SparkSession
+
+spark = SparkSession.builder.appName("CSV Data").getOrCreate()
+
+# Load CSV data
+dbutils.fs.cp("file:/Workspace/Shared/employee_data.csv","dbfs:/FileStore/employee_data.csv")
+df_csv = spark.read.format("csv").option("header", "true").load("dbfs:/FileStore/employee_data.csv")
+
+# Display the first 10 rows
+df_csv.show(10)
+
+
+# Inspect the schema
+df_csv.printSchema()
+
+=====================================================================================
+
+2. Data Cleaning:
+Remove rows where the Salary is less than 55,000.
+Filter the employees who joined after the year 2020.
+
+df_cleaned = df_csv.filter(df_csv['Salary'].cast("int") >= 55000)
+df_cleaned.show()
+
+from pyspark.sql.functions import year, col
+
+
+df_filtered = df_cleaned.filter(year(col('JoiningDate')) > 2020)
+df_filtered.show()
+
+=====================================================================================
+
+3. Data Aggregation:
+Find the average salary by Department.
+Count the number of employees in each Department.
+
+df_avg_salary = df_filtered.groupBy('Department').agg({'Salary': 'avg'})
+df_avg_salary.show()
+
+df_count_employees = df_filtered.groupBy('Department').count()
+df_count_employees.show()
+
+=====================================================================================
+
+4. Write the Data to CSV:
+Save the cleaned data (from the previous steps) to a new CSV file.
+
+df_filtered.write.format("csv").option("header", "true").save("dbfs:/FileStore/cleaned_employee_data.csv")
+
+=====================================================================================

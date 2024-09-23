@@ -1,0 +1,92 @@
+Sruthi A
+Graduate Engineer Trainee
+SQL, Python, Java
+Little Basics of DS
+
+
+21/08/2024
+CONSTRAINTS
+
+CREATE TABLE Products(
+  ProductID INT PRIMARY KEY,  --- Ensures productid is unique
+  ProductName VARCHAR(100) NOT NULL,  --- Prevents null value for product name
+  Category VARCHAR(50) NOT NULL,
+  Price DECIMAL(10,2) CHECK (pRICE >0), --doesn't allow negative value for price
+  StockQuantity INT DEFAULT 0 -- takes 0 as defaultvalue for stockQuantity
+);
+
+FUNCTIONS
+
+SELECT ProductName, UPPER(ProductName) AS ProductNameUpperCase
+FROM Products;
+
+SELECT ProductName, LOWER(ProductName) AS ProductNameLowerCase
+FROM Products;
+
+SELECT ProductName, SUBSTRING(ProductName, 1, 3) AS ShortName
+FROM Products;
+
+SELECT ProductName, LEN(ProductName) AS NameLength
+FROM Products;
+
+SELECT ProductName, REPLACE(ProductName,'Phone','Device') AS UpdatedProductName
+FROM Products;
+
+SELECT ProductName, Ltrim(rtrim(ProductName)) AS TrimmedProductName
+FROM Products;
+
+CHARINDEX
+CONCAT
+LEFT
+RIGHT
+REVERSE
+FORMAT
+REPLICATE
+
+SELECT ProductName, CHARINDEX('e',ProductName) AS PositionOfE
+FROM Products;
+
+SELECT ProductName, CATEGORY, CONCAT(ProductName,'-',Category) AS ProductDetails
+FROM Products;
+
+SELECT ProductName, LEFT(ProductName,5) AS ShortName
+FROM Products;
+
+SELECT ProductName, RIGHT(ProductName, 3) AS LastCharacters
+FROM Products;
+
+SELECT ProductName, REVERSE(ProductName) AS REVERSEDNAME
+FROM Products;
+
+SELECT ProductName, FORMAT(Price,'N2') AS FORMATTEDPRICE
+FROM Products;
+
+SELECT ProductName, REPLICATE(ProductName, 3) AS RepeatedProductName
+FROM Products;
+
+23/08/2024
+
+SELECT ProductName, Price ROUND(Price, 2) AS RoundedPrice
+FROM Products;
+
+SELECT ProductName, Price CEILING(Price) AS CeilingPrice
+FROM Products;
+
+SELECT ProductName, Price FLOOR(Price) AS FloorPrice
+FROM Products;
+
+SELECT ProductName, Price SQRT(Price) AS SquareRootPrice
+FROM Products;
+
+SELECT ProductName, Price POWER(Price, 2) AS PriceSquared
+FROM Products;
+
+
+
+
+
+
+
+
+
+

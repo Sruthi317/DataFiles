@@ -1,0 +1,107 @@
+Task 1: Vehicle Maintenance Data Ingestion
+
+from pyspark.sql import SparkSession
+from pyspark.sql.utils import AnalysisException
+import os
+
+# Initialize Spark session
+spark = SparkSession.builder.appName("Vehicle Maintenance Data Ingestion") .getOrCreate()
+
+# Path to the CSV file
+csv_file_path = "/content/sample_data/vehicle_maintenance.csv"
+delta_table_path = "/content/sample_data/delta/vehicle_maintenance"
+
+# Function to read CSV and handle errors
+def read_csv_with_error_handling(file_path):
+    try:
+        df = spark.read.csv(file_path, header=True, inferSchema=True)
+        return df
+    except AnalysisException as e:
+        logging.error(f"Error reading CSV file: {e}")
+        return None
+
+# Ingest data
+df = read_csv_with_error_handling(csv_file_path)
+
+if df is not None:
+    # Perform basic data validation
+    if df.filter(df['VehicleID'].isNull() | df['Date'].isNull() | df['ServiceType'].isNull()).count() > 0:
+        logging.error("Data contains null values in critical fields.")
+    else:
+        try:
+            df.write.format("delta").mode("overwrite").save(delta_table_path)
+            print("Data ingested successfully into Delta table.")
+        except Exception as e:
+            logging.error(f"Error writing to Delta table: {e}")
+else:
+    print("Failed to read the CSV file. Please check the logs for details.")
+
+====================================================================================
+Task 2 : Data Cleaning
+
+# Load the Delta table
+cleaned_table_path = "/delta/cleaned_vehicle_maintenance"
+df = spark.read.format("delta").load(delta_table_path)
+
+# Data cleaning
+df_cleaned = df.filter((df.ServiceCost > 0) & (df.Mileage > 0)) \
+                .dropDuplicates(['VehicleID', 'Date'])
+
+# Save the cleaned data to a new Delta table
+try:
+    df_cleaned.write.format("delta").mode("overwrite").save(cleaned_table_path)
+    print("Cleaned data saved successfully to new Delta table.")
+except Exception as e:
+    logging.error(f"Error saving cleaned data to Delta table: {e}")
+
+====================================================================================
+3. Vehicle Maintenance Analysis
+
+# Load the cleaned Delta table
+df_cleaned = spark.read.format("delta").load(cleaned_table_path)
+
+# Total maintenance cost per vehicle
+total_costs = df_cleaned.groupBy("VehicleID") \
+                         .agg({"ServiceCost": "sum"}) \
+                         .withColumnRenamed("sum(ServiceCost)", "TotalServiceCost")
+
+# Identify vehicles exceeding mileage threshold
+mileage_threshold = 30000
+vehicles_needing_service = df_cleaned.filter(df_cleaned.Mileage > mileage_threshold) \
+                                       .select("VehicleID", "Mileage")
+
+# Save analysis results to Delta tables
+total_costs_path = "/delta/total_vehicle_costs"
+vehicles_needing_service_path = "/delta/vehicles_needing_service"
+
+try:
+    total_costs.write.format("delta").mode("overwrite").save(total_costs_path)
+    vehicles_needing_service.write.format("delta").mode("overwrite").save(vehicles_needing_service_path)
+    print("Analysis results saved successfully to Delta tables.")
+except Exception as e:
+    logging.error(f"Error saving analysis results to Delta tables: {e}")
+
+===================================================================================
+Task 4: Data Governance with delta lake
+
+# Enable VACUUM to clean up old data
+from delta.tables import *
+
+delta_table = DeltaTable.forPath(spark, delta_table_path)
+
+# Vacuum the Delta table
+try:
+    delta_table.vacuum()  # Default retention period is 7 days
+    print("Vacuum completed successfully.")
+except Exception as e:
+    logging.error(f"Error during vacuum operation: {e}")
+
+# Describe history of updates
+try:
+    history = delta_table.history()
+    history.show(truncate=False)
+except Exception as e:
+    logging.error(f"Error fetching Delta table history: {e}")
+
+=====================================================================================
+

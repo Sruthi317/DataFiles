@@ -1,0 +1,150 @@
+
+Task 1: Creating Delta Table using Three Methods
+
+1. Load the given CSV and JSON datasets into Databricks.
+
+df_employees = spark.read.format("csv").option("header", "true").load("dbfs:/content/sample_data/employee_data.csv")
+df_products = spark.read.format("json").load("dbfs:/content/sample_data/product1_data.json")
+
+# Load the Employees CSV file into a DataFrame 
+
+df_employees = spark.read.format("csv") \
+.option("header", "true") \
+.option("inferSchema", "true") \
+.load("dbfs:/content/sample_data/employee_data.csv").cache()
+
+# Load the Products JSON file into a DataFrame 
+
+df_products = spark.read.format("json") \
+.option("inferSchema", "true") \
+.load("dbfs:/content/sample_data/product1_data.json").cache()
+
+
+2. Create a Delta table using the following three methods:
+
+#Create a Delta table from a DataFrame.
+df_employees.write.format("delta").mode("overwrite").save("/delta/employees")
+
+# Create temporary view for Employees DataFrame
+df_employees.createOrReplaceTempView("df_employees")
+
+# Create temporary view for Products DataFrame
+df_products.createOrReplaceTempView("df_products")
+
+%sql
+--Use SQL to create a Delta table.
+-- Employees
+CREATE TABLE employees_delta
+USING delta
+AS SELECT * FROM df_employees;
+
+#Convert both the CSV and JSON files into Delta format.
+
+df_employees.write.format("delta").mode("overwrite").save("/delta/employees_converted")
+
+df_products.write.format("delta").mode("overwrite").save("/delta/products_converted")
+
+=======================================================================================
+
+Task 2: Merge and Upsert (Slowly Changing Dimension - SCD)
+
+#1. Load the Delta table for employees created in Task 1.
+employees_delta_df = spark.read.format("delta").load("/delta/employees")
+
+#2. Merge the new employee data into the employees Delta table.
+
+new_employee_data = [
+(102, "Alice", "Finance", "2023-02-15", 75000),  
+(106, "Olivia", "HR", "2023-06-10", 65000)       
+]
+
+columns = ["EmployeeID", "EmployeeName", "Department", "JoiningDate", "Salary"]
+
+new_employees_df = spark.createDataFrame(new_employee_data, columns)
+
+
+#3. If an employee exists, update their salary. If the employee is new, insert their details.
+
+#new_employees_df.createOrReplaceTempView("new_employees_view")
+
+spark.sql("""
+MERGE INTO delta.`/delta/employees` AS target
+USING new_employees_view AS source
+ON target.EmployeeID = source.EmployeeID
+WHEN MATCHED THEN
+UPDATE SET target.Salary = source.Salary
+WHEN NOT MATCHED THEN
+INSERT (EmployeeID, EmployeeName, Department, JoiningDate, Salary)
+VALUES (source.EmployeeID, source.EmployeeName, source.Department, source.JoiningDate, source.Salary);
+""")
+
+# Verify the updated Delta table
+updated_employees_df = spark.read.format("delta").load("/delta/employees")
+updated_employees_df.show()
+
+======================================================================================
+
+Task 3: Internals of Delta Table
+
+#1. Explore the internals of the employees Delta table using Delta Lake features.
+# Describe the Delta table to see its metadata and internals
+spark.sql("DESCRIBE DETAIL delta.`/delta/employees`").show(truncate=False)
+
+# Show the schema of the Delta table
+spark.sql("DESCRIBE delta.`/delta/employees`").show()
+
+# Check the number of files in the Delta table
+spark.sql("DESCRIBE HISTORY delta.`/delta/employees`").show()
+
+#2. Check the transaction history of the table.
+spark.sql("DESCRIBE HISTORY delta.`/delta/employees`").show(truncate=False)
+
+%sql
+3. Perform Time Travel and retrieve the table before the previous merge operation.
+Retrieve the Delta table using a version number
+SELECT * FROM delta.`/delta/employees` VERSION AS OF 1;
+
+Retrieve the Delta table using a valid timestamp
+SELECT * FROM delta.`/delta/employees` TIMESTAMP AS OF '2024-09-17T04:30:00.000Z';
+
+=====================================================================================
+
+Task 4: Optimize Delta Table
+
+#1. Optimize the employees Delta table for better performance.
+spark.sql("""
+OPTIMIZE delta.`/delta/employees`;
+""")
+
+#2. Use Z-ordering on the Department column for improved query performance.
+spark.sql("""
+OPTIMIZE delta.`/delta/employees` ZORDER BY (Department);
+""")
+
+===================================================================================
+
+Task 5: Time Travel with Delta Table
+
+#1. Retrieve the employees Delta table as it was before the last merge.
+spark.sql("""
+DESCRIBE HISTORY delta.`/delta/employees`;
+""")
+#2. Query the table at a specific version to view the older records.
+spark.sql("""
+SELECT * FROM delta.`/delta/employees` VERSION AS OF 2;
+""")
+
+======================================================================================
+Task 6: Vacuum Delta Table
+
+#1. Use the vacuum operation on the employees Delta table to remove old versions and free up disk space.
+spark.sql("""
+VACUUM delta.`/delta/employees`;
+""")
+
+#2. Set the retention period to 7 days and ensure that old files are deleted.
+spark.sql("""
+VACUUM delta.`/delta/employees` RETAIN 168 HOURS;
+""")
+
+======================================================================================s

@@ -1,0 +1,72 @@
+Assignment 3: Working with Delta Tables
+Tasks:
+1. Convert CSV and JSON Data to Delta Format:
+Convert the employee_data.csv and product_data.json into Delta Tables.
+Save the Delta tables to a specified location.
+
+# Convert CSV Data to Delta
+df_filtered.write.format("delta").mode("overwrite").save("file:Workspace/Shared/employee_delta")
+
+# Convert JSON Data to Delta
+df_filtered_stock.write.format("delta").mode("overwrite").save("file:Workspace/Shared/product_delta")
+
+=======================================================================================
+2. Register Delta Tables:
+Register both the employee and product Delta tables as SQL tables.
+
+# Register Delta Tables
+spark.sql("CREATE TABLE employee_delta USING DELTA LOCATION 'file:/Workspace/Shared/employee_delta'")
+spark.sql("CREATE TABLE product_delta USING DELTA LOCATION 'file:/Workspace/Shared/path_to_delta/product_delta'")
+
+=======================================================================================
+3. Data Modifications with Delta Tables:
+Perform an update operation on the employee Delta table: Increase the
+salary by 5% for all employees in the IT department.
+
+# Perform the update operation
+spark.sql("""
+UPDATE employee_delta
+SET Salary = Salary * 1.05
+WHERE Department = 'IT'
+""")
+
+Perform a delete operation on the product Delta table: Delete products
+where the stock is less than 40.
+# Perform the delete operation
+spark.sql("""
+DELETE FROM product_delta
+WHERE Stock < 40
+""")
+======================================================================================
+
+4. Time Travel with Delta Tables:
+Query the product Delta table to show its state before the delete
+operation (use time travel).
+
+df_product_version = spark.read.format("delta").option("versionAsOf",0).load("file:Workspace/Shared/product_delta")
+df_product_version.show()
+
+Retrieve the version of the employee Delta table before the salary
+update.
+
+df_employee_version = spark.read.format("delta").option("versionAsOf", 0).load("file:/Workspace/Shared/employee_delta")
+df_employee_version.show()
+
+
+=====================================================================================
+5. Query Delta Tables:
+Query the employee Delta table to find the employees in the Finance
+department.
+df_finance_employees = spark.sql("SELECT * FROM employee_delta WHERE Department = 'Finance'")
+df_finance_employees.show()
+
+
+Query the product Delta table to find all products in the Electronics
+category with a price greater than 500.
+df_electronics_expensive = spark.sql("""
+SELECT * FROM product_delta
+WHERE Category = 'Electronics' AND Price > 500
+""")
+df_electronics_expensive.show()
+
+

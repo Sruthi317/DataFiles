@@ -1,0 +1,99 @@
+### **Exercise: PySpark Data Transformations on Movie Data**
+
+#### **Objective:**
+You have a dataset containing movie details. The goal is to use PySpark to apply data transformations to derive insights.
+
+#### **Dataset**:
+
+Here’s a sample dataset of movies (save this as a CSV file if necessary):
+
+```csv
+movie_id,title,genre,rating,box_office,date
+1,Inception,Sci-Fi,8.8,830000000,2010-07-16
+2,The Dark Knight,Action,9.0,1004000000,2008-07-18
+3,Interstellar,Sci-Fi,8.6,677000000,2014-11-07
+4,Avengers: Endgame,Action,8.4,2797000000,2019-04-26
+5,The Lion King,Animation,8.5,1657000000,1994-06-15
+6,Toy Story 4,Animation,7.8,1073000000,2019-06-21
+7,Frozen II,Animation,7.0,1450000000,2019-11-22
+8,Joker,Drama,8.5,1074000000,2019-10-04
+9,Parasite,Drama,8.6,258000000,2019-05-30
+
+
+```
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col
+from pyspark.sql import functions as F
+
+
+spark = SparkSession.builder.appName("Movies").getOrCreate()
+
+
+movies_file_path = "/content/sample_data/movies.csv"
+
+
+# 1. **Load the Dataset**:
+#    - Read the CSV file into a PySpark DataFrame.
+
+
+df_movies = spark.read.format("csv").option("header","true").option("inferSchema","true").load(movies_file_path)
+
+
+df_movies.show()
+
+
+# 2. **Filter Movies by Genre**:
+#    - Find all movies in the "Sci-Fi" genre.
+
+
+scifi_df = df_movies.filter(col("genre") == "Sci-Fi")
+scifi_df.show()
+
+
+# 3. **Top-Rated Movies**:
+#    - Find the top 3 highest-rated movies
+
+
+top_rated_df = df_movies.orderBy(col("rating").desc()).limit(3)
+top_rated_df.show()
+
+
+# 4. **Movies Released After 2010**:
+#    - Filter out all movies released after the year 2010.
+
+
+movies_after_2010_df = df_movies.filter(F.year(F.to_date(col("date"),'yyyy-MM-dd')) > 2010)
+movies_after_2010_df.show()
+
+
+# 5. **Calculate Average Box Office Collection by Genre**:
+#    - Group the movies by `genre` and calculate the average box office collection for each genre.
+
+
+box_office_genre_df = df_movies.groupBy("genre").agg(F.avg("box_office").alias("AverageCollection"))
+box_office_genre_df.show()
+
+
+# 6. **Add a New Column for Box Office in Billions**:
+#    - Add a new column that shows the box office collection in billions.
+
+
+df_movies_billions = df_movies.withColumn("InBillions", col("box_office")/ 1000000000)
+df_movies_billions.show()
+
+
+# 7. **Sort Movies by Box Office Collection**:
+#    - Sort the movies in descending order based on their box office collection.
+
+
+df_movies.orderBy(col("box_office").desc()).show()
+
+
+# 8. **Count the Number of Movies per Genre**:
+#    - Count the number of movies in each genre.
+
+
+movies_genre_df = df_movies.groupBy("genre").agg(F.count("title").alias("NumberOfMovies"))
+movies_genre_df.show()
+
+

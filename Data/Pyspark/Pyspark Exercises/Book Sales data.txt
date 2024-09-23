@@ -1,0 +1,92 @@
+
+Sample Data:
+sale_id,book_title,author,genre,sale_price,quantity,date
+1,The Catcher in the Rye,J.D. Salinger,Fiction,15.99,2,2023-01-05
+2,To Kill a Mockingbird,Harper Lee,Fiction,18.99,1,2023-01-10
+3,Becoming,Michelle Obama,Biography,20.00,3,2023-02-12
+4,Sapiens,Yuval Noah Harari,Non-Fiction,22.50,1,2023-02-15
+5,Educated,Tara Westover,Biography,17.99,2,2023-03-10
+6,The Great Gatsby,F. Scott Fitzgerald,Fiction,10.99,5,2023-03-15
+7,Atomic Habits,James Clear,Self-Help,16.99,3,2023-04-01
+8,Dune,Frank Herbert,Science Fiction,25.99,1,2023-04-10
+9,1984,George Orwell,Fiction,14.99,2,2023-04-12
+10,The Power of Habit,Charles Duhigg,Self-Help,18.00,1,2023-05-01
+
+!pip install pyspark
+
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import max,sum,col
+# Initialize spark session
+spark=SparkSession.builder.appName("BookSales").getOrCreate()
+# Load data
+book_sales_df=spark.read.csv("/content/Book_sales_data.csv",header=True,inferSchema=True)
+
+Exercises:
+1. Find Total Sales Revenue per Genre
+
+total_sales_revenue = book_sales_df.withColumn("total_sales", col("sale_price") * col("quantity")) \
+	.groupBy("genre").agg(sum("total_sales").alias("total_revenue"))
+print("total sales revenue per genre")
+total_sales_revenue.show()
+
+
+2. Filter Books Sold in the "Fiction" Genre
+
+total_books_sold=book_sales_df.filter(book_sales_df.genre=="Fiction")
+print("Books sold in fiction genre: ")
+total_books_sold.show()
+
+3. Find the Book with the Highest Sale Price
+
+book_with_highest_price=book_sales_df.orderBy(col("sale_price").desc()).limit(1)
+print("Book with highest price: ")
+book_with_highest_price.show()
+
+
+4. Calculate Total Quantity of Books Sold by Author.
+
+quantity_of_books_sold_by_author=book_sales_df.groupBy("author").agg(sum("quantity").alias("total_quantity"))
+print("Quantity of books sold by author: ")
+quantity_of_books_sold_by_author.show()
+
+5. Identify Sales Transactions Worth More Than $50
+
+sales_transaction=book_sales_df.withColumn("total_sales", col("sale_price") * col("quantity")) \
+	.filter(col("total_sales") > 50)
+print("Sales transaction worth more than $50: ")
+sales_transaction.show()
+
+6. Find the Average Sale Price per Genre
+Group the data by genre and calculate the average sale price for books
+in each genre.
+
+avg_sale_price_genre=book_sales_df.groupBy("genre").agg(sum("sale_price").alias("total_sales"), sum("quantity").alias("total_quantity")) \
+	.withColumn("average_sale_price", col("total_sales") / col("total_quantity"))
+print("Average sale price per genre:")
+avg_sale_price_genre.show()
+
+7. Count the Number of Unique Authors in the Dataset
+
+unique_authors=book_sales_df.select("author").distinct().count()
+print("Number of unique authors: ",unique_authors)
+
+8. Find the Top 3 Best-Selling Books by Quantity
+Identify the top 3 best-selling books based on the total quantity sold.
+
+top_selling_books=book_sales_df.orderBy(col("quantity").desc()).limit(3)
+print("top 3 selling books:")
+top_selling_books.show()
+
+9. Calculate Total Sales for Each Month
+
+from pyspark.sql.functions import date_format
+monthly_sales = book_sales_df.withColumn("month", date_format(col("date"), "yyyy-MM")) \
+	.withColumn("total_sales", col("sale_price") * col("quantity")) \
+	.groupBy("month").agg(sum("total_sales").alias("total_revenue"))
+monthly_sales.show()
+
+
+10. Create a New Column for Total Sales Amount
+
+total_sales_amt=book_sales_df.withColumn("total_sales", col("sale_price") * col("quantity"))
+total_sales_amt.show()

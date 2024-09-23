@@ -1,0 +1,114 @@
+from pyspark.sql.functions import col
+
+
+#Task 1: Create an ETL Pipeline using DLT (Python)
+
+# 1: Read the source data from CSV/Parquet
+source_df = spark.read.format("csv").option("header", "true").load("/path/to/orders.csv")
+
+# 2: Transform the data
+# Add a new column 'TotalAmount' by multiplying 'Quantity' by 'Price'
+transformed_df = source_df.withColumn("TotalAmount", col("Quantity") * col("Price"))
+
+# Filter where Quantity is greater than 1
+transformed_filtered_df = transformed_df.filter(col("Quantity") > 1)
+
+# 3: Write the transformed data to a Delta table
+transformed_filtered_df.write.format("delta").mode("overwrite").save("/path/to/delta_orders_table")
+
+=====================================================================================
+
+# Task 2: Create an ETL Pipeline using DLT (SQL)
+# 1: Create a table from the source CSV data
+CREATE OR REPLACE TABLE orders_raw
+USING CSV
+OPTIONS (path "/path/to/orders.csv", header "true");
+
+# 2: Transform the data by adding TotalAmount and filtering
+CREATE OR REPLACE TABLE orders_transformed AS
+SELECT *, Quantity * Price AS TotalAmount
+FROM orders_raw
+WHERE Quantity > 1;
+
+# 3: Write the transformed data into a Delta table
+CREATE OR REPLACE TABLE delta_orders_table AS
+SELECT * FROM orders_transformed;
+
+======================================================================================
+
+# Task 3: Perform Read, Write, Update, and Delete Operations on Delta Table
+# 1. Reading the data from the Delta table (PySpark)
+df = spark.read.format("delta").load("/path/to/delta_orders_table")
+df.show()
+
+# 2. Update the table (Increase the price of laptops by 10%)
+spark.sql("""
+    UPDATE delta_orders_table
+    SET Price = Price * 1.10
+    WHERE Product = 'Laptop'
+""")
+
+# 3. Delete rows where quantity is less than 2
+spark.sql("""
+    DELETE FROM delta_orders_table
+    WHERE Quantity < 2
+""")
+
+# 4. Insert a new record
+spark.sql("""
+    INSERT INTO delta_orders_table (OrderID, OrderDate, CustomerID, Product, Quantity, Price, TotalAmount)
+    VALUES (106, '2024-01-06', 'C006', 'Keyboard', 3, 50, 150)
+""")
+
+======================================================================================
+
+# Task 4: Merge Data (SCD Type 2)
+spark.sql("""MERGE INTO delta_orders_table AS target
+USING (SELECT * FROM new_orders_data) AS source
+ON target.OrderID = source.OrderID
+WHEN MATCHED THEN
+  UPDATE SET target.Quantity = source.Quantity,
+             target.Price = source.Price,
+             target.TotalAmount = source.Quantity * source.Price
+WHEN NOT MATCHED THEN
+  INSERT (OrderID, OrderDate, CustomerID, Product, Quantity, Price, TotalAmount)
+  VALUES (source.OrderID, source.OrderDate, source.CustomerID, source.Product, source.Quantity, source.Price, source.Quantity * source.Price)
+  """)
+=======================================================================================
+# Task 5: Explore Delta Table Internals
+# View the transaction history of the Delta table
+history_df = spark.sql("DESCRIBE HISTORY delta_orders_table")
+history_df.show(truncate=False)
+
+# View file size and modification times
+detail_df = spark.sql("DESCRIBE DETAIL delta_orders_table")
+detail_df.show(truncate=False)
+
+======================================================================================
+# Task 6: Time Travel in Delta Tables
+# Query the table at a previous version
+df_time_travel = spark.read.format("delta").option("versionAsOf", 0).load(delta_table_path)
+df_time_travel.show(truncate=False)
+
+# Query the table using a timestamp
+SELECT * FROM delta_orders_table TIMESTAMP AS OF '2024-01-10 00:00:00';
+
+=====================================================================================
+# Task 7: Optimize Delta Table
+# Optimize the Delta table using Z-order on the Product column
+spark.sql("OPTIMIZE delta_orders_table ZORDER BY (Product)")
+
+# Vacuum the table to remove old files (older than 7 days)
+spark.sql("VACUUM delta_orders_table RETAIN 7 HOURS")
+
+# Task 8: Converting Parquet Files to Delta Format
+# Read the Parquet file
+parquet_df = spark.read.format("parquet").load("/path/to/historical_orders_parquet/")
+
+# Convert the Parquet file to Delta
+parquet_df.write.format("delta").save("/path/to/historical_orders_delta/")
+
+# Verify by querying the Delta table
+delta_df = spark.read.format("delta").load("/path/to/historical_orders_delta/")
+delta_df.show()
+=====================================================================================

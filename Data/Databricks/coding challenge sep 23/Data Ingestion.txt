@@ -1,0 +1,125 @@
+Task 1: Data Ingestion - Reading Data from Various Formats
+
+from pyspark.sql import SparkSession
+from pyspark.sql.utils import AnalysisException
+import logging
+
+# Initialize Spark session
+spark = SparkSession.builder \
+    .appName("Data Ingestion") \
+    .getOrCreate()
+
+# 1. Ingest CSV Data (Student Information)
+csv_data_path = "/content/sample_data/student_data.csv"
+students_df = spark.read.csv(csv_data_path, header=True, inferSchema=True)
+
+# 2. Ingest JSON Data (City Information)
+json_data_path = "/content/sample_data/city_data.json"
+cities_df = spark.read.json(json_data_path)
+
+# 3. Ingest Parquet Data (Hospital Information)
+parquet_data_path = "/content/sample_data/hospital_data.parquet"
+hospitals_df = spark.read.parquet(parquet_data_path)
+
+# 4. Ingest Delta Table (Hospital Records)
+delta_table_path = "/delta/hospital_records"
+try:
+    delta_hospitals_df = spark.read.format("delta").load(delta_table_path)
+except AnalysisException as e:
+    logging.error(f"Error reading Delta table: {e}")
+
+=======================================================================================
+Task 2: Writing Data to Various Formats
+
+# Writing the DataFrames to different formats
+
+# 1. Write student data to CSV
+students_output_path = "/content/sample_data/students.csv"
+students_df.write.csv(students_output_path, header=True, mode="overwrite")
+
+# 2. Write city data to JSON
+cities_output_path = "/content/sample_data/cities.json"
+cities_df.write.json(cities_output_path, mode="overwrite")
+
+# 3. Write hospital data to Parquet
+hospitals_output_path = "/content/sample_data/hospitals.parquet"
+hospitals_df.write.parquet(hospitals_output_path, mode="overwrite")
+
+# 4. Write hospital data to Delta table
+hospitals_delta_output_path = "/delta/hospitals_data"
+hospitals_df.write.format("delta").mode("overwrite").save(hospitals_delta_output_path)
+
+=======================================================================================
+Task 3: Running One Notebook from Another
+
+# Notebook A: ingest_data_and_cleaning.py
+
+# Ingest data from CSV
+students_df = spark.read.csv("/content/sample_data/student_data.csv", header=True, inferSchema=True)
+
+# Clean the data
+students_cleaned_df = students_df.dropDuplicates().na.fill(0)  # Replace missing values with 0
+
+# Save cleaned data to Delta table
+cleaned_students_delta_path = "/delta/cleaned_students"
+students_cleaned_df.write.format("delta").mode("overwrite").save(cleaned_students_delta_path)
+
+# Call Notebook B for analysis
+dbutils.notebook.run("/content/new_note/notebook_b", 60)  # Timeout set to 60 seconds
+
+
+# Notebook B: analyze_data.py
+
+# Load cleaned data from Delta table
+cleaned_students_df = spark.read.format("delta").load("/delta/cleaned_students")
+
+# Calculate the average score
+average_score_df = cleaned_students_df.groupBy("Class").agg({"Score": "avg"}).withColumnRenamed("avg(Score)", "AverageScore")
+
+# Save the analysis results to a new Delta table
+average_scores_delta_path = "/delta/average_student_scores"
+average_score_df.write.format("delta").mode("overwrite").save(average_scores_delta_path)
+
+=======================================================================================
+Task 4: Databricks Ingestion
+
+# Read data from various sources
+
+# 1. Read CSV file from Azure Data Lake
+azure_csv_path = "abfss://<your-container>@<your-account>.dfs.core.windows.net/data/azure_student_data.csv"
+azure_students_df = spark.read.csv(azure_csv_path, header=True, inferSchema=True)
+
+# 2. Read JSON file stored on Databricks FileStore
+databricks_json_path = "/dbfs/FileStore/content/sample_data/databricks_city_data.json"
+databricks_cities_df = spark.read.json(databricks_json_path)
+
+# 3. Read Parquet file from AWS S3
+s3_parquet_path = "s3a://<your-bucket>/content/sample_data/external_hospital_data.parquet"
+s3_hospitals_df = spark.read.parquet(s3_parquet_path)
+
+# 4. Read Delta table stored in a Databricks-managed database
+databricks_delta_path = "/delta/databricks_hospital_records"
+databricks_hospitals_df = spark.read.format("delta").load(databricks_delta_path)
+
+# Perform transformations (e.g., filtering)
+filtered_students_df = azure_students_df.filter(azure_students_df.Score > 80)
+
+# Write cleaned data to different formats
+
+# Write to CSV
+filtered_students_output_path = "/content/sample_data/filtered_students.csv"
+filtered_students_df.write.csv(filtered_students_output_path, header=True, mode="overwrite")
+
+# Write to JSON
+filtered_cities_output_path = "/content/sample_data/filtered_cities.json"
+databricks_cities_df.write.json(filtered_cities_output_path, mode="overwrite")
+
+# Write to Parquet
+filtered_hospitals_output_path = "/content/sample_data/filtered_hospitals.parquet"
+s3_hospitals_df.write.parquet(filtered_hospitals_output_path, mode="overwrite")
+
+# Write to Delta
+filtered_hospitals_delta_path = "/delta/filtered_hospitals_data"
+s3_hospitals_df.write.format("delta").mode("overwrite").save(filtered_hospitals_delta_path)
+
+======================================================================================

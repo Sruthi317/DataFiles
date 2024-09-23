@@ -1,0 +1,50 @@
+Assignment 2: Working with JSON Data (product_data.json)
+Tasks:
+1. Load the JSON data:
+Load the product_data.json file into a DataFrame.
+Display the first 10 rows and inspect the schema.
+
+# Load JSON data
+df_json = spark.read.format("json").load("file:/Workspace/Shared/product_data.json")
+
+
+# Display the first 10 rows
+df_json.show(10)
+
+
+# Inspect the schema
+df_json.printSchema()
+
+======================================================================================
+
+2. Data Cleaning:
+Remove rows where Stock is less than 30.
+Filter the products that belong to the "Electronics" category.
+
+df_filtered_stock = df_json.filter(df_json['Stock'] >= 30)
+
+df_filtered_electronics = df_filtered_stock.filter(df_filtered_stock['Category'] == 'Electronics')
+
+=====================================================================================
+3. Data Aggregation:
+Calculate the total stock for products in the "Furniture" category.
+Find the average price of all products in the dataset.
+
+from pyspark.sql.functions import sum
+
+
+df_furniture = df_filtered_stock.filter(df_filtered_stock['Category'] == 'Furniture')
+total_stock_furniture = df_furniture.agg(sum('Stock').alias('TotalStock'))
+total_stock_furniture.show()
+
+df_avg_price = df_filtered_stock.agg({'Price': 'avg'})
+df_avg_price.show()
+
+=====================================================================================
+4. Write the Data to JSON:
+Save the cleaned and aggregated data into a new JSON file.
+
+df_filtered_stock.write.format("json").save("file/Workspace/Shared/filtered_product_data.json")
+
+=====================================================================================
+

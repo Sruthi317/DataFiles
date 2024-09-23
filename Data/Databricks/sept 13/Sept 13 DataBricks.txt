@@ -1,0 +1,94 @@
+Datasets
+1. Sales Data (sales_data.csv)
+OrderID,OrderDate,CustomerID,Product,Quantity,Price
+1001,2024-01-15,C001,Widget A,10,25.50
+1002,2024-01-16,C002,Widget B,5,15.75
+1003,2024-01-16,C001,Widget C,8,22.50
+1004,2024-01-17,C003,Widget A,15,25.50
+1005,2024-01-18,C004,Widget D,7,30.00
+1006,2024-01-19,C002,Widget B,9,15.75
+1007,2024-01-20,C005,Widget C,12,22.50
+1008,2024-01-21,C003,Widget A,10,25.50
+2. Customer Data (customer_data.json)
+[
+{
+"CustomerID": "C001",
+"CustomerName": "John Doe",
+"Region": "North",
+"SignupDate": "2022-07-01"
+},
+{
+"CustomerID": "C002",
+"CustomerName": "Jane Smith",
+"Region": "South",
+"SignupDate": "2023-02-15"
+},
+{
+"CustomerID": "C003",
+"CustomerName": "Emily Johnson",
+"Region": "East",
+"SignupDate": "2021-11-20"
+},
+{
+"CustomerID": "C004",
+"CustomerName": "Michael Brown",
+"Region": "West",
+"SignupDate": "2022-12-05"
+},
+{
+"CustomerID": "C005",
+"CustomerName": "Linda Davis",
+"Region": "North",
+"SignupDate": "2023-03-10"
+}
+]
+3. New Sales Data (new_sales_data.csv)
+
+OrderID,OrderDate,CustomerID,Product,Quantity,Price
+1009,2024-01-22,C006,Widget E,14,20.00
+1010,2024-01-23,C007,Widget F,6,35.00
+1002,2024-01-16,C002,Widget B,10,15.75
+
+Tasks
+1. Create Delta Tables Using 3 Methods
+--------------------------------------
+1. Load the sales_data.csv file into a DataFrame.
+
+2. Write the DataFrame as a Delta Table.
+
+3. Load the customer_data.json file into a DataFrame.
+
+4. Write the DataFrame as a Delta Table.
+
+5. Convert an existing Parquet file into a Delta Table (For demonstration, use a
+Parquet file available in your workspace).
+
+2. Data Management
+------------------
+
+1. Load the new_sales_data.csv file into a DataFrame.
+
+2. Write the new DataFrame as a Delta Table.
+
+3. Perform a MERGE INTO operation to update and insert records into the existing
+Delta table.
+
+3. Optimize Delta Table
+------------------------
+1. Apply the OPTIMIZE command on the Delta Table and use Z-Ordering on an
+appropriate column.
+
+
+4. Advanced Features
+---------------------
+1. Use DESCRIBE HISTORY to inspect the history of changes for a Delta Table.
+2. Use VACUUM to remove old files from the Delta Table.
+
+5. Hands-on Exercises
+----------------------
+1. Using Delta Lake for Data Versioning:
+Query historical versions of the Delta Table using Time Travel.
+2. Building a Reliable Data Lake with Delta Lake:
+Implement schema enforcement and handle data updates with Delta Lake.
+Optimize data layout and perform vacuum operations to maintain storage
+efficiency.
