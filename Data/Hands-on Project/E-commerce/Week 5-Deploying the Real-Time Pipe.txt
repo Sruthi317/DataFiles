@@ -1,0 +1,56 @@
+Week 5: Deploying the Real-Time Pipeline with Azure DevOps
+
+trigger:
+- main
+
+pool:
+vmImage: 'ubuntu-latest'
+
+variables:
+DATABRICKS_HOST: 'https://<databricks-instance>.azuredatabricks.net' # Replace with your
+Databricks instance
+DATABRICKS_TOKEN: $(databricksToken) # Secure token for authentication
+
+steps:
+# Step 1: Install Python and Databricks CLI
+- task: UsePythonVersion@0
+inputs:
+versionSpec: '3.x'
+addToPath: true
+
+- script: |
+pip install databricks-cli
+displayName: 'Install Databricks CLI'
+
+# Step 2: Configure Databricks CLI
+- script: |
+databricks configure --host $(DATABRICKS_HOST) --token $(DATABRICKS_TOKEN)
+displayName: 'Configure Databricks CLI'
+env:
+DATABRICKS_HOST: $(DATABRICKS_HOST)
+DATABRICKS_TOKEN: $(DATABRICKS_TOKEN)
+
+# Step 3: Upload E-commerce Notebooks to Databricks Workspace
+- script: |
+databricks workspace import ./notebooks/ecommerce_etl.py /Shared/ecommerce_etl -l PYTHON
+displayName: 'Upload E-commerce ETL Notebook to Databricks Workspace'
+
+# Step 4: Run the Databricks ETL Notebook
+- script: |
+JOB_ID=$(databricks runs submit --json-file run_config.json | jq -r '.run_id')
+echo "Job ID: $JOB_ID"
+databricks runs wait --run-id $JOB_ID
+displayName: 'Run E-commerce ETL Notebook'
+
+JSON Config File:
+{
+"run_name": "Ecommerce ETL Run",
+"new_cluster": {
+"spark_version": "9.1.x-scala2.12",
+"node_type_id": "Standard_DS3_v2",
+"num_workers": 2
+},
+"notebook_task": {
+"notebook_path": "/Shared/ecommerce_etl"
+}
+}

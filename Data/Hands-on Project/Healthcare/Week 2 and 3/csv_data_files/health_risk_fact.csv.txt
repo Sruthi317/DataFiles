@@ -1,0 +1,7 @@
+Risk_id,Patient_id,Risk_type,Risk_score,Assessment_time
+1,1,Heart Disease Risk,0.45,2024-01-01 08:30:00
+2,2,Diabetes Risk,0.30,2024-01-01 10:15:00
+3,3,Hypertension Risk,0.60,2024-01-02 09:00:00
+4,4,Obesity Risk,0.55,2024-01-02 10:30:00
+5,5,Heart Disease Risk,0.75,2024-01-01 14:00:00
+6,6,Diabetes Risk,0.40,2024-01-02 08:45:00

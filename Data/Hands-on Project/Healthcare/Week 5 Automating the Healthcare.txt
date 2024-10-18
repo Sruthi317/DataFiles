@@ -1,0 +1,93 @@
+Week 5: Automating the Healthcare Monitoring System with Azure DevOps
+
+trigger:
+- main
+
+pool:
+vmImage: 'ubuntu-latest'
+
+variables:
+DATABRICKS_HOST: 'https://<databricks-instance>.azuredatabricks.net'
+DATABRICKS_TOKEN: $(databricksToken)
+
+steps:
+# Step 1: Install Python and Databricks CLI
+- task: UsePythonVersion@0
+inputs:
+versionSpec: '3.x'
+addToPath: true
+
+- script: |
+pip install databricks-cli
+displayName: 'Install Databricks CLI'
+
+# Step 2: Configure Databricks CLI
+- script: |
+databricks configure --host $(DATABRICKS_HOST) --token $(DATABRICKS_TOKEN)
+displayName: 'Configure Databricks CLI'
+env:
+DATABRICKS_HOST: $(DATABRICKS_HOST)
+DATABRICKS_TOKEN: $(DATABRICKS_TOKEN)
+
+# Step 3: Upload Healthcare Data Processing Notebook to Databricks Workspace
+- script: |
+databricks workspace import ./notebooks/healthcare_data_processing.py
+/Shared/healthcare_data_processing
+-l PYTHON
+displayName: 'Upload Healthcare Data Processing Notebook'
+
+# Step 4: Upload Anomaly Detection Notebook to Databricks Workspace
+- script: |
+databricks workspace import ./notebooks/anomaly_detection.py /Shared/anomaly_detection
+-l PYTHON
+displayName: 'Upload Anomaly Detection Notebook'
+
+# Step 5: Run Healthcare Data Processing Notebook
+- script: |
+JOB_ID=$(databricks runs submit --json-file healthcare_run_config.json | jq -r '.run_id')
+echo "Job ID: $JOB_ID"
+databricks runs wait --run-id $JOB_ID
+displayName: 'Run Healthcare Data Processing Notebook'
+
+# Step 6: Run Anomaly Detection Notebook
+- script: |
+JOB_ID=$(databricks runs submit --json-file anomaly_run_config.json | jq -r '.run_id')
+echo "Job ID: $JOB_ID"
+databricks runs wait --run-id $JOB_ID
+displayName: 'Run Anomaly Detection Notebook'
+
+healthcare_run_config.json:
+{
+"run_name": "Healthcare Data Processing Run",
+"new_cluster": {
+
+"spark_version": "10.4.x-scala2.12",
+"node_type_id": "Standard_DS3_v2",
+"num_workers": 2
+},
+"notebook_task": {
+"notebook_path": "/Shared/healthcare_data_processing",
+"base_parameters": {
+"input_path": "dbfs:/path/to/your/input/data",
+"output_path": "dbfs:/path/to/your/output/data"
+}
+}
+}
+
+anomaly_run_config.json:
+{
+"run_name": "Anomaly Detection Run",
+"new_cluster": {
+"spark_version": "10.4.x-scala2.12",
+"node_type_id": "Standard_DS3_v2",
+"num_workers": 2
+},
+"notebook_task": {
+"notebook_path": "/Shared/anomaly_detection",
+"base_parameters": {
+"input_path": "dbfs:/path/to/your/healthcare/input/data",
+"threshold_heart_rate": 100,
+"threshold_bp_systolic": 140
+}
+}
+}

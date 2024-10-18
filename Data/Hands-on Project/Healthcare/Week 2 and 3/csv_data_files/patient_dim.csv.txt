@@ -1,0 +1,7 @@
+Patient_id,Patient_name,Age,Gender,Location
+1,John Doe,30,Male,New York
+2,Jane Smith,25,Female,Los Angeles
+3,Bob Johnson,40,Male,Chicago
+4,Alice Williams,35,Female,Houston
+5,Charlie Brown,50,Male,Phoenix
+6,Emily Davis,28,Female,Philadelphia
